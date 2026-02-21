@@ -2,7 +2,7 @@ name: Monitor Abiraterone
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/30 * * * *"  # кожні 30 хв
   workflow_dispatch:
 
 jobs:
@@ -12,11 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # --- Кеш для state.txt, щоб бот пам’ятав останній стан ---
+      - name: Cache state file
+        uses: actions/cache@v3
+        with:
+          path: state.txt
+          key: state-file-cache
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
+      # --- Встановлення потрібних бібліотек ---
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
 
       - name: Run monitor
         env:
