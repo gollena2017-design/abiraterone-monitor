@@ -1,22 +1,21 @@
 name: Monitor Abiraterone
-
 on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
-
 jobs:
   run:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore state
         uses: actions/cache@v4
         with:
-          path: last_record.json
-          key: abiraterone-state
+          path: state.json
+          key: abiraterone-state-${{ github.run_id }}
+          restore-keys: |
+            abiraterone-state-
 
       - uses: actions/setup-python@v5
         with:
@@ -26,12 +25,13 @@ jobs:
 
       - name: Run monitor
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: python parser.py
+        run: python monitor.py
 
       - name: Save state
-        uses: actions/cache@v4
+        uses: actions/cache/save@v4
+        if: always()
         with:
-          path: last_record.json
-          key: abiraterone-state
+          path: state.json
+          key: abiraterone-state-${{ github.run_id }}
