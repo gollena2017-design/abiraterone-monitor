@@ -1,0 +1,61 @@
+name: Monitor Abiraterone
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # кожні 30 хв — ЄЛіки (+ НІР якщо потрібно)
+    - cron: "0 8 * * 4"      # четвер 08:00 UTC — ЄЛіки + НІР
+    - cron: "0 17 * * 4"     # четвер 17:00 UTC — ЄЛіки + НІР
+    - cron: "0 8 * * 5"      # п'ятниця 08:00 UTC — ЄЛіки + НІР (якщо в четвер не оновилось)
+    - cron: "0 17 * * 5"     # п'ятниця 17:00 UTC — ЄЛіки + НІР (якщо в четвер не оновилось)
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Яке джерело перевірити"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - eliky
+          - unci
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore state
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: abiraterone-state-${{ github.run_id }}
+          restore-keys: |
+            abiraterone-state-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          CHECK_SOURCE: >-
+            ${{
+              github.event_name == 'workflow_dispatch' && inputs.source ||
+              (github.event.schedule == '0 8 * * 4'  ||
+               github.event.schedule == '0 17 * * 4' ||
+               github.event.schedule == '0 8 * * 5'  ||
+               github.event.schedule == '0 17 * * 5') && 'all' ||
+              'eliky'
+            }}
+        run: python monitor.py
+
+      - name: Save state
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: state.json
+          key: abiraterone-state-${{ github.run_id }}
